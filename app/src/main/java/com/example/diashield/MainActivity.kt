@@ -14,7 +14,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setSupportActionBar(findViewById(R.id.my_toolbar))
+//        setSupportActionBar(findViewById(R.id.my_toolbar))
         setContentView(R.layout.activity_main)
 //        val btnStartRecord = findViewById<Button>(R.id.measure_heart_rate)
 
