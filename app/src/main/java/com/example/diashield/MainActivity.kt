@@ -1,6 +1,5 @@
 package com.example.diashield
 
-
 import android.Manifest
 import android.content.ContentValues
 import android.content.Intent
@@ -33,16 +32,15 @@ import java.util.concurrent.Executors
 
 
 class MainActivity : AppCompatActivity() {
-
+    
     private lateinit var viewBinding: ActivityMainBinding
-    private lateinit var btnStartRecord: Button
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
+
     private lateinit var cameraExecutor: ExecutorService
     private val activityResultLauncher =
         registerForActivityResult(
-            ActivityResultContracts.RequestMultiplePermissions()
-        )
+            ActivityResultContracts.RequestMultiplePermissions())
         { permissions ->
             // Handle Permission granted/rejected
             var permissionGranted = true
@@ -59,55 +57,37 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-    companion object {
-        private const val TAG = "CameraXApp"
-        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
-        private val REQUIRED_PERMISSIONS =
-            mutableListOf(
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO
-            ).apply {
-                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
-                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                }
-            }.toTypedArray()
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(R.layout.activity_main)
-        btnStartRecord = findViewById(R.id.measure_heart_rate)
+        setContentView(viewBinding.root)
+
+        // Request camera permissions
         if (allPermissionsGranted()) {
             startCamera()
         } else {
             requestPermissions()
         }
 
-        btnStartRecord.setOnClickListener {
-            Toast.makeText(this@MainActivity, "Video going", Toast.LENGTH_SHORT).show()
-            captureVideo()
-        }
+        // Set up the listeners for video capture
+        viewBinding.measureHeartRate.setOnClickListener { captureVideo() }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
-
         val buttonStart: Button = findViewById(R.id.button2)
 
         buttonStart.setOnClickListener {
-
             val intent = Intent(this, SecondActivity::class.java)
             intent.putExtra("heart_rate", 90.2.toFloat())
             intent.putExtra("resp_rate", 21.2.toFloat())
             startActivity(intent)
         }
+
     }
 
     private fun captureVideo() {
-        Toast.makeText(this@MainActivity, "Video starting", Toast.LENGTH_SHORT)
-            .show()
         val videoCapture = this.videoCapture ?: return
 
-//        viewBinding.measureHeartRate.isEnabled = false
+        viewBinding.measureHeartRate.isEnabled = false
 
         val curRecording = recording
         if (curRecording != null) {
@@ -135,24 +115,21 @@ class MainActivity : AppCompatActivity() {
         recording = videoCapture.output
             .prepareRecording(this, mediaStoreOutputOptions)
             .apply {
-                if (PermissionChecker.checkSelfPermission(
-                        this@MainActivity,
-                        Manifest.permission.RECORD_AUDIO
-                    ) ==
-                    PermissionChecker.PERMISSION_GRANTED
-                ) {
+                if (PermissionChecker.checkSelfPermission(this@MainActivity,
+                        Manifest.permission.RECORD_AUDIO) ==
+                    PermissionChecker.PERMISSION_GRANTED)
+                {
                     withAudioEnabled()
                 }
             }
             .start(ContextCompat.getMainExecutor(this)) { recordEvent ->
-                when (recordEvent) {
+                when(recordEvent) {
                     is VideoRecordEvent.Start -> {
-                        btnStartRecord.apply {
+                        viewBinding.measureHeartRate.apply {
                             text = getString(R.string.stop_capture_heart_rate)
                             isEnabled = true
                         }
                     }
-
                     is VideoRecordEvent.Finalize -> {
                         if (!recordEvent.hasError()) {
                             val msg = "Video capture succeeded: " +
@@ -163,21 +140,16 @@ class MainActivity : AppCompatActivity() {
                         } else {
                             recording?.close()
                             recording = null
-                            Log.e(
-                                TAG, "Video capture ends with error: " +
-                                        "${recordEvent.error}"
-                            )
+                            Log.e(TAG, "Video capture ends with error: " +
+                                    "${recordEvent.error}")
                         }
-                        btnStartRecord.apply {
+                        viewBinding.measureHeartRate.apply {
                             text = getString(R.string.capture_heart_rate)
                             isEnabled = true
                         }
                     }
                 }
             }
-
-        Toast.makeText(baseContext, "Video started", Toast.LENGTH_SHORT)
-            .show()
     }
 
     private fun startCamera() {
@@ -234,8 +206,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(
-            baseContext, it
-        ) == PackageManager.PERMISSION_GRANTED
+            baseContext, it) == PackageManager.PERMISSION_GRANTED
     }
 
     override fun onDestroy() {
@@ -243,4 +214,17 @@ class MainActivity : AppCompatActivity() {
         cameraExecutor.shutdown()
     }
 
+    companion object {
+        private const val TAG = "CameraXApp"
+        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
+        private val REQUIRED_PERMISSIONS =
+            mutableListOf (
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO
+            ).apply {
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                    add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                }
+            }.toTypedArray()
+    }
 }
