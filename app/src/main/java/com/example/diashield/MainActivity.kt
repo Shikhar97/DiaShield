@@ -32,7 +32,6 @@ import java.util.concurrent.Executors
 
 
 class MainActivity : AppCompatActivity() {
-    
     private lateinit var viewBinding: ActivityMainBinding
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
@@ -73,9 +72,9 @@ class MainActivity : AppCompatActivity() {
         viewBinding.measureHeartRate.setOnClickListener { captureVideo() }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
-        val buttonStart: Button = findViewById(R.id.button2)
+        val extendedFab: Button = findViewById(R.id.extended_fab)
 
-        buttonStart.setOnClickListener {
+        extendedFab.setOnClickListener {
             val intent = Intent(this, SecondActivity::class.java)
             intent.putExtra("heart_rate", 90.2.toFloat())
             intent.putExtra("resp_rate", 21.2.toFloat())
@@ -191,8 +190,14 @@ class MainActivity : AppCompatActivity() {
                 cameraProvider.unbindAll()
 
                 // Bind use cases to camera
-                cameraProvider
+                val camera = cameraProvider
                     .bindToLifecycle(this, cameraSelector, preview, videoCapture)
+
+                // Enabling flash
+                if ( camera.cameraInfo.hasFlashUnit() ) {
+                    camera.cameraControl.enableTorch(true); // or false
+                }
+
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }

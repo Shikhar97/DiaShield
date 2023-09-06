@@ -2,8 +2,6 @@
     <string name="app_name">DiaShield</string>
     <string name="action_settings">Settings</string>
 
-    <string name="upload">Upload Symptoms</string>
-    <string name="symptoms">Choose Symptoms</string>
     <string-array name="symptoms_list">
         <item>Nausea</item>
         <item>Headache</item>
@@ -20,6 +18,7 @@
     <string name="capture_heart_rate">Measure Heart Rate</string>
     <string name="capture_resp_rate">Measure Resp. Rate</string>
     <string name="upload_btn">"Upload "</string>
-    <string name="value"> </string>
+    <string name="value">Value</string>
     <string name="stop_capture_heart_rate">Stop measuring</string>
+    <string name="choose_symptoms">Choose Symptoms</string>
 </resources>
