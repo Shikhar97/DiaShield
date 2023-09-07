@@ -47,7 +47,8 @@ import kotlin.math.sqrt
 class MainActivity : AppCompatActivity() {
 
     private val captureTime: Long = 2500
-    private lateinit var heartRate: String
+    private var heartRate = "0"
+    private var respRate = "0"
     private val rootPath = Environment.getExternalStorageDirectory().path
     private val tag = "CameraXApp"
     private var rate: Float = 0.0f
@@ -135,6 +136,7 @@ class MainActivity : AppCompatActivity() {
                 "Please lay the phone on abdomen for 45 seconds",
                 Toast.LENGTH_LONG
             ).show()
+            viewBinding.measureRespRate.isEnabled = false
             val intentAccelerometer = Intent(baseContext, Accelerometer::class.java)
             startService(intentAccelerometer)
 
@@ -156,7 +158,9 @@ class MainActivity : AppCompatActivity() {
                         e.printStackTrace()
                     }
                     viewBinding.respRateVal.setText(runnable.respiratoryRate.toString())
+                    respRate = runnable.respiratoryRate.toString()
                     Toast.makeText(this@MainActivity, "Respiratory rate calculated!", Toast.LENGTH_SHORT).show()
+                    viewBinding.measureRespRate.isEnabled = true
                     b.clear()
                     System.gc()
                 }
@@ -168,8 +172,10 @@ class MainActivity : AppCompatActivity() {
 
         extendedFab.setOnClickListener {
             val intent = Intent(this, SecondActivity::class.java)
-            intent.putExtra("heart_rate", viewBinding.heartRateVal.text)
-            intent.putExtra("resp_rate", viewBinding.respRateVal.text)
+            val bundle = Bundle()
+            bundle.putFloat("heart_rate", heartRate.toFloat())
+            bundle.putFloat("resp_rate", respRate.toFloat())
+            intent.putExtras(bundle)
             startActivity(intent)
         }
 
@@ -200,7 +206,7 @@ class MainActivity : AppCompatActivity() {
         val videoCapture = this.videoCapture ?: return
         viewBinding.measureHeartRate.isEnabled = false
         val curRecording = recording
-        
+
         // create and start a new recording session
         val name = "$rootPath/heart_rate_video.mp4"
         val contentValues = ContentValues().apply {

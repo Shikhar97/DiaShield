@@ -9,7 +9,6 @@ import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
-import android.widget.Toast
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class Accelerometer : Service(), SensorEventListener {
@@ -23,11 +22,6 @@ class Accelerometer : Service(), SensorEventListener {
 
     override fun onCreate() {
         Log.d("CameraXApp", "onCreate: Accelerometer service is started")
-        Toast.makeText(
-            baseContext,
-            "Accelerometer service is started",
-            Toast.LENGTH_LONG
-        ).show()
         accelerometerManager = getSystemService(SENSOR_SERVICE) as SensorManager
         val senseAccelerometer = accelerometerManager!!.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         accelerometerManager!!.registerListener(

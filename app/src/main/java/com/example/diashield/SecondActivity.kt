@@ -32,15 +32,13 @@ class SecondActivity : AppCompatActivity() {
     var symptomMap = HashMap<String, Float>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
-        setTitle(R.string.app_name)
         setContentView(R.layout.second_activity)
-
-
         val spinnerSymptoms = findViewById<Spinner>(R.id.spinner_symptoms)
-
         val symptomsArray = resources.getStringArray(R.array.symptoms_list)
         val rBar = findViewById<RatingBar>(R.id.ratingBar)
+
         rBar.onRatingBarChangeListener = RatingBar.OnRatingBarChangeListener { _, rating, _ ->
 
             val selectedItem = spinnerSymptoms.selectedItem as String
@@ -80,10 +78,11 @@ class SecondActivity : AppCompatActivity() {
 
         val upload: FloatingActionButton = findViewById(R.id.upload_button)
         upload.setOnClickListener {
+            val bundle = intent.extras
 
             val dataToInsert = VitalsDb.VitalsUser(
-                heartRate = intent.getFloatExtra("heart_rate", 0f),
-                respRate = intent.getFloatExtra("resp_rate", 0f),
+                heartRate = bundle?.getFloat("heart_rate"),
+                respRate = bundle?.getFloat("resp_rate"),
                 nausea = symptomMap["Nausea"],
                 headache = symptomMap["Headache"],
                 diarrhea = symptomMap["Diarrhea"],
@@ -96,7 +95,7 @@ class SecondActivity : AppCompatActivity() {
                 feelingTired = symptomMap["Feeling tired"]
             )
             vitalViewModel.insert(dataToInsert)
-            Toast.makeText(this@SecondActivity, "updated in database", Toast.LENGTH_LONG).show()
+            Log.d("CameraXApp","Updated in database")
             for ((key, value) in symptomMap) {
                 Log.d("YourTag","$key=$value")
             }
@@ -105,7 +104,6 @@ class SecondActivity : AppCompatActivity() {
             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP
             startActivity(intent)
             finish()
-//            exitProcess(0)
         }
     }
 }
