@@ -1,6 +1,5 @@
 package com.example.diashield
 
-import android.app.Application
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -8,11 +7,6 @@ import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
-//class VitalsApplication : Application() {
-//    // Using by lazy so the database and the repository are only created when they're needed
-//    // rather than when the application starts
-//
-//}
 
 class VitalViewModel(private val repository: VitalsRepository) : ViewModel() {
 

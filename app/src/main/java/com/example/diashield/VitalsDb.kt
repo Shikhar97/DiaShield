@@ -1,7 +1,6 @@
 package com.example.diashield
 
 
-import android.app.Application
 import android.content.Context
 import androidx.room.ColumnInfo
 import androidx.room.Dao
@@ -15,7 +14,6 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
