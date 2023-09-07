@@ -1,14 +1,18 @@
 package com.example.diashield
 
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Button
@@ -29,19 +33,24 @@ import androidx.camera.video.VideoRecordEvent
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.lifecycle.lifecycleScope
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.example.diashield.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-
+import kotlin.math.abs
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class MainActivity : AppCompatActivity() {
-//    private val accelValuesZ: Any = TODO()
-    private var rate: Int = 0
+
+    private val captureTime: Long = 2500
+    private lateinit var heartRate: String
+    private val rootPath = Environment.getExternalStorageDirectory().path
+    private val tag = "CameraXApp"
+    private var rate: Float = 0.0f
     private lateinit var camera: Camera
     private lateinit var viewBinding: ActivityMainBinding
     private var videoCapture: VideoCapture<Recorder>? = null
@@ -69,6 +78,42 @@ class MainActivity : AppCompatActivity() {
                 startCamera()
             }
         }
+    companion object {
+        private val REQUIRED_PERMISSIONS =
+            mutableListOf(
+                Manifest.permission.CAMERA,
+                Manifest.permission.RECORD_AUDIO
+            ).toTypedArray()
+    }
+
+    class RespiratoryRateDetector internal constructor(
+        private var accelValuesX: java.util.ArrayList<Int>,
+        private var accelValuesY: java.util.ArrayList<Int>,
+        private var accelValuesZ: java.util.ArrayList<Int>
+    ) :
+        Runnable {
+        var respiratoryRate = 0f
+
+        override fun run() {
+            var previousValue: Float
+            var currentValue: Float
+            previousValue = 10f
+            var k = 0
+            for (i in 11..450) {
+                currentValue = sqrt(
+                    accelValuesZ[i].toDouble().pow(2.0) + accelValuesX[i].toDouble()
+                        .pow(2.0) + accelValuesY[i].toDouble().pow(2.0)
+                ).toFloat()
+                if (abs(x = previousValue - currentValue) > 0.15) {
+                    k++
+                }
+                previousValue = currentValue
+            }
+            val ret = (k / 45.00)
+            respiratoryRate = (ret * 30).toFloat()
+            Log.i("CameraXApp", "Respiratory rate: $respiratoryRate")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,14 +129,47 @@ class MainActivity : AppCompatActivity() {
 
         // Set up the listeners for video capture
         viewBinding.measureHeartRate.setOnClickListener { captureVideo() }
+        viewBinding.measureRespRate.setOnClickListener {
+            Toast.makeText(
+                baseContext,
+                "Please lay the phone on abdomen for 45 seconds",
+                Toast.LENGTH_LONG
+            ).show()
+            val intentAccelerometer = Intent(baseContext, Accelerometer::class.java)
+            startService(intentAccelerometer)
+
+        }
+        LocalBroadcastManager.getInstance(this@MainActivity)
+            .registerReceiver(object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    val b = intent.extras
+                    val runnable = RespiratoryRateDetector(
+                        b!!.getIntegerArrayList("accelValuesX") ?: ArrayList(),
+                        b!!.getIntegerArrayList("accelValuesY") ?: ArrayList(),
+                        b!!.getIntegerArrayList("accelValuesZ") ?: ArrayList()
+                    )
+                    val thread = Thread(runnable)
+                    thread.start()
+                    try {
+                        thread.join()
+                    } catch (e: InterruptedException) {
+                        e.printStackTrace()
+                    }
+                    viewBinding.respRateVal.setText(runnable.respiratoryRate.toString())
+                    Toast.makeText(this@MainActivity, "Respiratory rate calculated!", Toast.LENGTH_SHORT).show()
+                    b.clear()
+                    System.gc()
+                }
+            }, IntentFilter("AccelerometerDataBroadcasting"))
 
         cameraExecutor = Executors.newSingleThreadExecutor()
         val extendedFab: Button = findViewById(R.id.extended_fab)
 
+
         extendedFab.setOnClickListener {
             val intent = Intent(this, SecondActivity::class.java)
-            intent.putExtra("heart_rate", 90.2.toFloat())
-            intent.putExtra("resp_rate", 21.2.toFloat())
+            intent.putExtra("heart_rate", viewBinding.heartRateVal.text)
+            intent.putExtra("resp_rate", viewBinding.respRateVal.text)
             startActivity(intent)
         }
 
@@ -109,24 +187,22 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun captureVideo() {
+        Toast.makeText(
+            baseContext,
+            "Please place your finger on the back camera lens for 45 seconds",
+            Toast.LENGTH_LONG
+        ).show()
 
         // Enabling flash
         if (camera.cameraInfo.hasFlashUnit()) {
-            camera.cameraControl.enableTorch(true) // or false
+            camera.cameraControl.enableTorch(true)
         }
         val videoCapture = this.videoCapture ?: return
         viewBinding.measureHeartRate.isEnabled = false
         val curRecording = recording
-        if (curRecording != null) {
-            // Stop the current recording session.
-            curRecording.stop()
-            recording = null
-            return
-        }
-
+        
         // create and start a new recording session
-        val name = SimpleDateFormat(FILENAME_FORMAT, Locale.US)
-            .format(System.currentTimeMillis())
+        val name = "$rootPath/heart_rate_video.mp4"
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
@@ -158,11 +234,11 @@ class MainActivity : AppCompatActivity() {
                             if (camera.cameraInfo.hasFlashUnit()) {
                                 camera.cameraControl.enableTorch(false)
                             }
-                        }, 45000)
+                        }, captureTime)
 
                         viewBinding.measureHeartRate.apply {
-                            text = getString(R.string.stop_capture_heart_rate)
-                            isEnabled = true
+                            text = getString(R.string.capture_heart_rate)
+                            isEnabled = false
                         }
                     }
 
@@ -174,21 +250,20 @@ class MainActivity : AppCompatActivity() {
                             val videoPath =
                                 convertMediaUriToPath(recordEvent.outputResults.outputUri)
                             lifecycleScope.launch(Dispatchers.IO) {
-                                val heartRate = calculateHeartRate(videoPath)
+                                calculateHeartRate(videoPath)
                                 withContext(Dispatchers.Main) {
-                                    println("Accessing UI on ${Thread.currentThread().name}")
                                     viewBinding.heartRateVal.setText(heartRate)
+                                    Log.i("CameraXApp", "Heart rate: $heartRate")
+                                    Toast.makeText(this@MainActivity, "Heart rate calculated!", Toast.LENGTH_SHORT).show()
                                 }
                             }
-                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT)
-                                .show()
-                            Toast.makeText(baseContext, videoPath, Toast.LENGTH_SHORT).show()
-                            Log.d(TAG, msg)
+                            Log.d(tag, videoPath)
+                            Log.d(tag, msg)
                         } else {
                             recording?.close()
                             recording = null
                             Log.e(
-                                TAG, "Video capture ends with error: " +
+                                tag, "Video capture ends with error: " +
                                         "${recordEvent.error}"
                             )
                         }
@@ -200,27 +275,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
     }
-
-//    private fun callRespiratoryCalculator(): Int {
-//        var previousValue: Float
-//        var currentValue: Float
-//        previousValue = 10f
-//        var k = 0
-//        for (i in 11..450) {
-//            currentValue = kotlin.math.sqrt(
-//                accelValuesZ[i].toDouble().pow(2.0) +
-//                        accelValuesX[i].toDouble().pow(2.0) +
-//                        accelValuesY[i].toDouble().pow(2.0)
-//            ).toFloat()
-//            if (abs(x = previousValue - currentValue) > 0.15) {
-//                k++
-//            }
-//            previousValue = currentValue
-//        }
-//        val ret = (k / 45.00)
-//
-//        return (ret * 30).toInt()
-//    }
 
     private fun calculateHeartRate(vararg params: String?): String {
         val retriever = MediaMetadataRetriever()
@@ -273,9 +327,10 @@ class MainActivity : AppCompatActivity() {
                 }
                 x = b.elementAt(i)
             }
-            rate = ((count.toFloat() / 45) * 60).toInt()
-            return (rate / 2).toString()
+            rate = (count.toFloat() / 45) * 60
+            heartRate = (rate / 2).toString()
         }
+        return (rate / 2).toString()
 
     }
 
@@ -306,12 +361,11 @@ class MainActivity : AppCompatActivity() {
                 cameraProvider.unbindAll()
 
                 // Bind use cases to camera
-                camera = cameraProvider
-                    .bindToLifecycle(this, cameraSelector, preview, videoCapture)
+                camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, videoCapture)
 
 
             } catch (exc: Exception) {
-                Log.e(TAG, "Use case binding failed", exc)
+                Log.e(tag, "Use case binding failed", exc)
             }
 
         }, ContextCompat.getMainExecutor(this))
@@ -330,15 +384,5 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor.shutdown()
-    }
-
-    companion object {
-        private const val TAG = "CameraXApp"
-        private const val FILENAME_FORMAT = "yyyy-MM-dd-HH-mm-ss-SSS"
-        private val REQUIRED_PERMISSIONS =
-            mutableListOf(
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO
-            ).toTypedArray()
     }
 }
