@@ -17,6 +17,7 @@ import kotlinx.coroutines.SupervisorJob
 
 
 class SecondActivity : AppCompatActivity() {
+    private val tag = "DiaShield"
     private val applicationScope = CoroutineScope(SupervisorJob())
 
     // Using by lazy so the database and the repository are only created when they're needed
@@ -38,6 +39,9 @@ class SecondActivity : AppCompatActivity() {
         val spinnerSymptoms = findViewById<Spinner>(R.id.spinner_symptoms)
         val symptomsArray = resources.getStringArray(R.array.symptoms_list)
         val rBar = findViewById<RatingBar>(R.id.ratingBar)
+        for (symptom in symptomsArray) {
+            symptomMap[symptom] = 0f
+        }
 
         rBar.onRatingBarChangeListener = RatingBar.OnRatingBarChangeListener { _, rating, _ ->
 
@@ -48,9 +52,6 @@ class SecondActivity : AppCompatActivity() {
                 "You selected $rating for $selectedItem",
                 Toast.LENGTH_SHORT
             ).show()
-        }
-        for (symptom in symptomsArray) {
-            symptomMap[symptom] = 0f
         }
 
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, symptomsArray)

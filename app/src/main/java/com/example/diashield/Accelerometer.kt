@@ -12,6 +12,8 @@ import android.util.Log
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class Accelerometer : Service(), SensorEventListener {
+    private val tag = "DiaShield"
+
     private var accelerometerManager: SensorManager? = null
     val accelValuesX = ArrayList<Int>()
     val accelValuesY = ArrayList<Int>()
@@ -21,7 +23,7 @@ class Accelerometer : Service(), SensorEventListener {
     }
 
     override fun onCreate() {
-        Log.d("CameraXApp", "onCreate: Accelerometer service is started")
+        Log.d(tag, "onCreate: Accelerometer service is started")
         accelerometerManager = getSystemService(SENSOR_SERVICE) as SensorManager
         val senseAccelerometer = accelerometerManager!!.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         accelerometerManager!!.registerListener(
@@ -32,7 +34,7 @@ class Accelerometer : Service(), SensorEventListener {
     }
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        Log.d("CameraXApp", "onStartCommand: Accelerometer service is starting")
+        Log.d(tag, "onStartCommand: Accelerometer service is starting")
 
         accelValuesX.clear()
         accelValuesY.clear()
@@ -41,7 +43,7 @@ class Accelerometer : Service(), SensorEventListener {
     }
 
     override fun onSensorChanged(sensorEvent: SensorEvent) {
-        Log.d("CameraXApp", "onSensorChanged: Capturing data")
+        Log.d(tag, "onSensorChanged: Capturing data")
 
         val sensor = sensorEvent.sensor
         if (sensor.type == Sensor.TYPE_ACCELEROMETER) {
@@ -56,7 +58,7 @@ class Accelerometer : Service(), SensorEventListener {
 
     override fun onDestroy() {
         accelerometerManager!!.unregisterListener(this)
-        Log.d("CameraXApp", "Accelerometer service is being stopped")
+        Log.d(tag, "Accelerometer service is being stopped")
         val thread = Thread {
             val intent = Intent("AccelerometerDataBroadcasting")
             val b = Bundle()

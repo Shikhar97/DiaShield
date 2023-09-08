@@ -35,22 +35,27 @@ import androidx.core.content.PermissionChecker
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.example.diashield.databinding.ActivityMainBinding
+import com.opencsv.CSVWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileWriter
+import java.io.IOException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+
 class MainActivity : AppCompatActivity() {
 
-    private val captureTime: Long = 2500
+    private val captureTime: Long = 40000
     private var heartRate = "0"
     private var respRate = "0"
     private val rootPath = Environment.getExternalStorageDirectory().path
-    private val tag = "CameraXApp"
+    private val tag = "DiaShield"
     private var rate: Float = 0.0f
     private lateinit var camera: Camera
     private lateinit var viewBinding: ActivityMainBinding
@@ -79,6 +84,7 @@ class MainActivity : AppCompatActivity() {
                 startCamera()
             }
         }
+
     companion object {
         private val REQUIRED_PERMISSIONS =
             mutableListOf(
@@ -94,8 +100,30 @@ class MainActivity : AppCompatActivity() {
     ) :
         Runnable {
         var respiratoryRate = 0f
+        private val tag = "DiaShield"
+        private val rootPath = Environment.getExternalStorageDirectory().path
+
+        private fun saveToCSV(list: ArrayList<Int>, location: String) {
+            val file = File(location)
+            try {
+                val newFile = FileWriter(file)
+                val csvWr = CSVWriter(newFile)
+                val headerRow = arrayOf("Index", "Data")
+                csvWr.writeNext(headerRow)
+                for ((i, j) in list.indices.withIndex()) {
+                    val rowData = arrayOf(i.toString() + "", list[j].toString() + "")
+                    csvWr.writeNext(rowData)
+                }
+                csvWr.close()
+            } catch (e: IOException) {
+                e.printStackTrace()
+            }
+        }
 
         override fun run() {
+            saveToCSV(accelValuesZ, "$rootPath/accelValuesZ.csv")
+            saveToCSV(accelValuesY, "$rootPath/accelValuesY.csv")
+            saveToCSV(accelValuesX, "$rootPath/accelValuesX.csv")
             var previousValue: Float
             var currentValue: Float
             previousValue = 10f
@@ -112,7 +140,7 @@ class MainActivity : AppCompatActivity() {
             }
             val ret = (k / 45.00)
             respiratoryRate = (ret * 30).toFloat()
-            Log.i("CameraXApp", "Respiratory rate: $respiratoryRate")
+            Log.i(tag, "Respiratory rate: $respiratoryRate")
         }
     }
 
@@ -147,8 +175,8 @@ class MainActivity : AppCompatActivity() {
                     val b = intent.extras
                     val runnable = RespiratoryRateDetector(
                         b!!.getIntegerArrayList("accelValuesX") ?: ArrayList(),
-                        b!!.getIntegerArrayList("accelValuesY") ?: ArrayList(),
-                        b!!.getIntegerArrayList("accelValuesZ") ?: ArrayList()
+                        b.getIntegerArrayList("accelValuesY") ?: ArrayList(),
+                        b.getIntegerArrayList("accelValuesZ") ?: ArrayList()
                     )
                     val thread = Thread(runnable)
                     thread.start()
@@ -159,7 +187,11 @@ class MainActivity : AppCompatActivity() {
                     }
                     viewBinding.respRateVal.setText(runnable.respiratoryRate.toString())
                     respRate = runnable.respiratoryRate.toString()
-                    Toast.makeText(this@MainActivity, "Respiratory rate calculated!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Respiratory rate calculated!",
+                        Toast.LENGTH_SHORT
+                    ).show()
                     viewBinding.measureRespRate.isEnabled = true
                     b.clear()
                     System.gc()
@@ -259,8 +291,12 @@ class MainActivity : AppCompatActivity() {
                                 calculateHeartRate(videoPath)
                                 withContext(Dispatchers.Main) {
                                     viewBinding.heartRateVal.setText(heartRate)
-                                    Log.i("CameraXApp", "Heart rate: $heartRate")
-                                    Toast.makeText(this@MainActivity, "Heart rate calculated!", Toast.LENGTH_SHORT).show()
+                                    Log.i(tag, "Heart rate: $heartRate")
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        "Heart rate calculated!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
                             Log.d(tag, videoPath)
