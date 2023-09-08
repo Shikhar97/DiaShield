@@ -36,7 +36,6 @@ import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
-import androidx.core.content.PermissionChecker
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.example.diashield.databinding.ActivityMainBinding
@@ -290,7 +289,6 @@ class MainActivity : AppCompatActivity() {
         }
         val videoCapture = this.videoCapture ?: return
         viewBinding.measureHeartRate.isEnabled = false
-        val curRecording = recording
 
         // create and start a new recording session
         val name = "$rootPath/heart_rate_video.mp4"
@@ -305,21 +303,11 @@ class MainActivity : AppCompatActivity() {
             .build()
         recording = videoCapture.output
             .prepareRecording(this, mediaStoreOutputOptions)
-            .apply {
-                if (PermissionChecker.checkSelfPermission(
-                        this@MainActivity,
-                        Manifest.permission.RECORD_AUDIO
-                    ) ==
-                    PermissionChecker.PERMISSION_GRANTED
-                ) {
-                    withAudioEnabled()
-                }
-            }
             .start(ContextCompat.getMainExecutor(this)) { recordEvent ->
                 when (recordEvent) {
                     is VideoRecordEvent.Start -> {
                         viewBinding.root.postDelayed({
-                            curRecording?.stop()
+                            recording?.stop()
                             recording = null
                             // Disable flash after capturing
                             if (camera.cameraInfo.hasFlashUnit()) {
@@ -328,7 +316,6 @@ class MainActivity : AppCompatActivity() {
                         }, captureTime)
 
                         viewBinding.measureHeartRate.apply {
-                            text = getString(R.string.capture_heart_rate)
                             isEnabled = false
                         }
                     }
@@ -360,7 +347,6 @@ class MainActivity : AppCompatActivity() {
                                     window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
                                     layoutMainMenu!!.background.alpha = 0
                                     viewBinding.measureHeartRate.apply {
-                                        text = getString(R.string.capture_heart_rate)
                                         isEnabled = true
                                     }
 
