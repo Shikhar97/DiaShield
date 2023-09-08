@@ -96,9 +96,9 @@ class SecondActivity : AppCompatActivity() {
                 feelingTired = symptomMap["Feeling tired"]
             )
             vitalViewModel.insert(dataToInsert)
-            Log.d("CameraXApp","Updated in database")
+            Log.d(tag,"Updated in database")
             for ((key, value) in symptomMap) {
-                Log.d("YourTag","$key=$value")
+                Log.d(tag,"$key=$value")
             }
 
             val intent = Intent(this, MainActivity::class.java)

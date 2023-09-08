@@ -21,4 +21,7 @@
     <string name="value">Value</string>
     <string name="stop_capture_heart_rate">Stop measuring</string>
     <string name="choose_symptoms">Choose Symptoms</string>
+    <string name="calculating">Calculating....</string>
+    <string name="accept">Great!</string>
+    <string name="cancel">Cancel</string>
 </resources>

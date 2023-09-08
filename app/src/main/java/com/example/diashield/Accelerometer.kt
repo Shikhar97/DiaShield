@@ -7,13 +7,15 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class Accelerometer : Service(), SensorEventListener {
     private val tag = "DiaShield"
-
+    private val captureTime: Long = 40000
     private var accelerometerManager: SensorManager? = null
     val accelValuesX = ArrayList<Int>()
     val accelValuesY = ArrayList<Int>()
@@ -35,7 +37,7 @@ class Accelerometer : Service(), SensorEventListener {
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         Log.d(tag, "onStartCommand: Accelerometer service is starting")
-
+        Handler(Looper.getMainLooper()).postDelayed({ stopSelf() }, captureTime)
         accelValuesX.clear()
         accelValuesY.clear()
         accelValuesZ.clear()
@@ -44,15 +46,11 @@ class Accelerometer : Service(), SensorEventListener {
 
     override fun onSensorChanged(sensorEvent: SensorEvent) {
         Log.d(tag, "onSensorChanged: Capturing data")
-
         val sensor = sensorEvent.sensor
         if (sensor.type == Sensor.TYPE_ACCELEROMETER) {
             accelValuesX.add((sensorEvent.values[0] * 100).toInt())
             accelValuesY.add((sensorEvent.values[1] * 100).toInt())
             accelValuesZ.add((sensorEvent.values[2] * 100).toInt())
-            if (accelValuesX.size >= 480) {
-                stopSelf()
-            }
         }
     }
 

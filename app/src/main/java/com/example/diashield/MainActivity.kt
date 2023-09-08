@@ -15,8 +15,12 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import android.view.View
+import android.view.WindowManager
 import android.widget.Button
+import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.Camera
@@ -30,6 +34,7 @@ import androidx.camera.video.Recorder
 import androidx.camera.video.Recording
 import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.content.PermissionChecker
 import androidx.lifecycle.lifecycleScope
@@ -59,7 +64,10 @@ class MainActivity : AppCompatActivity() {
     private var rate: Float = 0.0f
     private lateinit var camera: Camera
     private lateinit var viewBinding: ActivityMainBinding
+//    private var dialogBox: AlertDialog? = null
+    private var layoutMainMenu: ConstraintLayout? = null
     private var videoCapture: VideoCapture<Recorder>? = null
+    private var progressBar: ProgressBar? = null
     private var recording: Recording? = null
 
     private lateinit var cameraExecutor: ExecutorService
@@ -124,11 +132,15 @@ class MainActivity : AppCompatActivity() {
             saveToCSV(accelValuesZ, "$rootPath/accelValuesZ.csv")
             saveToCSV(accelValuesY, "$rootPath/accelValuesY.csv")
             saveToCSV(accelValuesX, "$rootPath/accelValuesX.csv")
+            Log.d(tag, accelValuesY.size.toString())
+            Log.d(tag, accelValuesX.size.toString())
+            Log.d(tag, accelValuesZ.size.toString())
+
             var previousValue: Float
             var currentValue: Float
             previousValue = 10f
             var k = 0
-            for (i in 11..450) {
+            for (i in 1..<accelValuesX.size) {
                 currentValue = sqrt(
                     accelValuesZ[i].toDouble().pow(2.0) + accelValuesX[i].toDouble()
                         .pow(2.0) + accelValuesY[i].toDouble().pow(2.0)
@@ -144,11 +156,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
+        layoutMainMenu = findViewById(R.id.background)
+        layoutMainMenu!!.background.alpha = 0
+        progressBar = findViewById(R.id.progressBar)
+        val intentAccelerometer = Intent(baseContext, Accelerometer::class.java)
 
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                finish()
+                stopService(intentAccelerometer)
+            }
+        })
         // Request camera permissions
         if (allPermissionsGranted()) {
             startCamera()
@@ -157,7 +180,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Set up the listeners for video capture
-        viewBinding.measureHeartRate.setOnClickListener { captureVideo() }
+        viewBinding.measureHeartRate.setOnClickListener {
+            Toast.makeText(
+                baseContext,
+                "Please place your finger on the back camera lens for 45 seconds",
+                Toast.LENGTH_LONG
+            ).show()
+            captureVideo()
+        }
         viewBinding.measureRespRate.setOnClickListener {
             Toast.makeText(
                 baseContext,
@@ -165,18 +195,37 @@ class MainActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
             viewBinding.measureRespRate.isEnabled = false
-            val intentAccelerometer = Intent(baseContext, Accelerometer::class.java)
             startService(intentAccelerometer)
+            window.setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+//            dialogBox = MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_App_MaterialAlertDialog)
+//                .setIcon(R.drawable.baseline_add_24)
+//                .setTitle(resources.getString(R.string.calculating))
+//                .setMessage("")
+//                .setCancelable(false)
+//                .setNeutralButton(resources.getString(R.string.cancel)) { dialog, _ ->
+//                    dialog.dismiss()
+//                    stopService(intentAccelerometer)
+//                }
+//                .show()
+            progressBar!!.visibility = View.VISIBLE
+//            viewBinding.calculating.visibility = View.VISIBLE
+            layoutMainMenu!!.background.alpha = 200
+
 
         }
         LocalBroadcastManager.getInstance(this@MainActivity)
             .registerReceiver(object : BroadcastReceiver() {
                 override fun onReceive(context: Context, intent: Intent) {
+                    Toast.makeText(
+                        baseContext,
+                        "Calculating respiratory rate ",
+                        Toast.LENGTH_LONG
+                    ).show()
                     val b = intent.extras
                     val runnable = RespiratoryRateDetector(
                         b!!.getIntegerArrayList("accelValuesX") ?: ArrayList(),
-                        b.getIntegerArrayList("accelValuesY") ?: ArrayList(),
-                        b.getIntegerArrayList("accelValuesZ") ?: ArrayList()
+                        b!!.getIntegerArrayList("accelValuesY") ?: ArrayList(),
+                        b!!.getIntegerArrayList("accelValuesZ") ?: ArrayList()
                     )
                     val thread = Thread(runnable)
                     thread.start()
@@ -193,6 +242,10 @@ class MainActivity : AppCompatActivity() {
                         Toast.LENGTH_SHORT
                     ).show()
                     viewBinding.measureRespRate.isEnabled = true
+                    progressBar!!.visibility = View.INVISIBLE
+//                    viewBinding.calculating.visibility = View.INVISIBLE
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                    layoutMainMenu!!.background.alpha = 0
                     b.clear()
                     System.gc()
                 }
@@ -225,11 +278,11 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun captureVideo() {
-        Toast.makeText(
-            baseContext,
-            "Please place your finger on the back camera lens for 45 seconds",
-            Toast.LENGTH_LONG
-        ).show()
+        progressBar!!.visibility = View.VISIBLE
+        window.setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+        layoutMainMenu!!.background.alpha = 200
+        Log.d(tag, "Camera starting")
+//        viewBinding.calculating.visibility = View.VISIBLE
 
         // Enabling flash
         if (camera.cameraInfo.hasFlashUnit()) {
@@ -287,6 +340,11 @@ class MainActivity : AppCompatActivity() {
 
                             val videoPath =
                                 convertMediaUriToPath(recordEvent.outputResults.outputUri)
+                            Toast.makeText(
+                                baseContext,
+                                "Calculating heart rate ",
+                                Toast.LENGTH_LONG
+                            ).show()
                             lifecycleScope.launch(Dispatchers.IO) {
                                 calculateHeartRate(videoPath)
                                 withContext(Dispatchers.Main) {
@@ -297,6 +355,15 @@ class MainActivity : AppCompatActivity() {
                                         "Heart rate calculated!",
                                         Toast.LENGTH_SHORT
                                     ).show()
+                                    progressBar!!.visibility = View.INVISIBLE
+//                                    viewBinding.calculating.visibility = View.INVISIBLE
+                                    window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                                    layoutMainMenu!!.background.alpha = 0
+                                    viewBinding.measureHeartRate.apply {
+                                        text = getString(R.string.capture_heart_rate)
+                                        isEnabled = true
+                                    }
+
                                 }
                             }
                             Log.d(tag, videoPath)
@@ -308,10 +375,6 @@ class MainActivity : AppCompatActivity() {
                                 tag, "Video capture ends with error: " +
                                         "${recordEvent.error}"
                             )
-                        }
-                        viewBinding.measureHeartRate.apply {
-                            text = getString(R.string.capture_heart_rate)
-                            isEnabled = true
                         }
                     }
                 }
@@ -416,6 +479,7 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissions() {
         activityResultLauncher.launch(REQUIRED_PERMISSIONS)
     }
+
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(

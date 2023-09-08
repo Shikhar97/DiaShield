@@ -2,9 +2,11 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/background"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
+    android:background="@drawable/shape_window_dim"
     android:padding="16dp"
     app:layout_constraintBottom_toTopOf="@+id/measure_heart_rate"
     app:layout_constraintTop_toTopOf="@+id/measure_heart_rate"
@@ -21,7 +23,7 @@
 
     </androidx.camera.view.PreviewView>
 
-    <Button
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/measure_heart_rate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -31,7 +33,7 @@
         app:layout_constraintBottom_toTopOf="@id/measure_resp_rate"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <Button
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/measure_resp_rate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -45,17 +47,17 @@
         android:id="@+id/extended_fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
         android:contentDescription="@string/choose_symptoms"
         android:text="@string/choose_symptoms"
         app:icon="@drawable/baseline_add_24"
-        tools:layout_editor_absoluteX="180dp"
-        tools:layout_editor_absoluteY="624dp"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:layout_editor_absoluteX="180dp"
+        tools:layout_editor_absoluteY="624dp" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline"
@@ -74,14 +76,15 @@
         android:layout_height="50dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="136dp"
+        android:autofillHints=" "
         android:ems="10"
-        android:inputType="text"
+        android:inputType="none"
+        android:focusable="false"
         android:text="@string/value"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toEndOf="@id/measure_resp_rate"
-        android:autofillHints=" " />
+        app:layout_constraintStart_toEndOf="@id/measure_resp_rate" />
 
     <EditText
         android:id="@+id/heart_rate_val"
@@ -89,14 +92,53 @@
         android:layout_height="50dp"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="228dp"
+        android:autofillHints=""
         android:ems="10"
-        android:inputType="text"
+        android:inputType="none"
+        android:focusable="false"
         android:text="@string/value"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toEndOf="@+id/measure_heart_rate"
-        android:autofillHints="" />
+        app:layout_constraintStart_toEndOf="@+id/measure_heart_rate" />
+
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginEnd="144dp"
+        android:layout_marginBottom="580dp"
+        android:elevation="100dp"
+        android:indeterminate="true"
+        android:translationZ="100dp"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent" />
+
+<!--    <TextView-->
+<!--        android:id="@+id/calculating"-->
+<!--        android:layout_width="wrap_content"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:layout_marginTop="44dp"-->
+<!--        android:layout_marginEnd="56dp"-->
+<!--        android:background="#00000000"-->
+<!--        android:elevation="100dp"-->
+<!--        android:text="@string/calculating"-->
+<!--        android:textSize="30sp"-->
+<!--        android:visibility="invisible"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@+id/progressBar" />-->
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_begin="361dp" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
