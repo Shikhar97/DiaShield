@@ -76,7 +76,6 @@ class SecondActivity : AppCompatActivity() {
             }
         }
 
-
         val upload: FloatingActionButton = findViewById(R.id.upload_button)
         upload.setOnClickListener {
             val bundle = intent.extras

@@ -39,13 +39,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.example.diashield.databinding.ActivityMainBinding
-import com.opencsv.CSVWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileWriter
-import java.io.IOException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.math.abs
@@ -55,22 +51,22 @@ import kotlin.math.sqrt
 
 class MainActivity : AppCompatActivity() {
 
-    private val captureTime: Long = 45000
-    private var heartRate = "0"
     private var respRate = "0"
-    private val rootPath = Environment.getExternalStorageDirectory().path
-    private val tag = "DiaShield"
+    private var heartRate = "0"
+    private var tag = "DiaShield"
     private var rate: Float = 0.0f
+    private var captureTime: Long = 45000
+    private var rootPath = Environment.getExternalStorageDirectory().path
 
     private lateinit var camera: Camera
-    private lateinit var cameraProvider: ProcessCameraProvider
     private lateinit var cameraSelector: CameraSelector
+    private lateinit var cameraProvider: ProcessCameraProvider
 
-    private lateinit var viewBinding: ActivityMainBinding
-    private var layoutMainMenu: ConstraintLayout? = null
-    private var videoCapture: VideoCapture<Recorder>? = null
-    private var progressBar: ProgressBar? = null
     private var recording: Recording? = null
+    private var progressBar: ProgressBar? = null
+    private var layoutMainMenu: ConstraintLayout? = null
+    private lateinit var viewBinding: ActivityMainBinding
+    private var videoCapture: VideoCapture<Recorder>? = null
 
     private lateinit var cameraExecutor: ExecutorService
     private val activityResultLauncher =
@@ -103,7 +99,7 @@ class MainActivity : AppCompatActivity() {
             ).toTypedArray()
     }
 
-    class RespiratoryRateDetector internal constructor(
+    class RespiratoryRateCalc internal constructor(
         private var accelValuesX: java.util.ArrayList<Int>,
         private var accelValuesY: java.util.ArrayList<Int>,
         private var accelValuesZ: java.util.ArrayList<Int>
@@ -111,33 +107,7 @@ class MainActivity : AppCompatActivity() {
         Runnable {
         var respiratoryRate = 0f
         private val tag = "DiaShield"
-        private val rootPath = Environment.getExternalStorageDirectory().path
-
-        private fun saveToCSV(list: ArrayList<Int>, location: String) {
-            val file = File(location)
-            try {
-                val newFile = FileWriter(file)
-                val csvWr = CSVWriter(newFile)
-                val headerRow = arrayOf("Index", "Data")
-                csvWr.writeNext(headerRow)
-                for ((i, j) in list.indices.withIndex()) {
-                    val rowData = arrayOf(i.toString() + "", list[j].toString() + "")
-                    csvWr.writeNext(rowData)
-                }
-                csvWr.close()
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
-        }
-
         override fun run() {
-            saveToCSV(accelValuesZ, "$rootPath/accelValuesZ.csv")
-            saveToCSV(accelValuesY, "$rootPath/accelValuesY.csv")
-            saveToCSV(accelValuesX, "$rootPath/accelValuesX.csv")
-            Log.d(tag, accelValuesY.size.toString())
-            Log.d(tag, accelValuesX.size.toString())
-            Log.d(tag, accelValuesZ.size.toString())
-
             var previousValue: Float
             var currentValue: Float
             previousValue = 10f
@@ -157,7 +127,6 @@ class MainActivity : AppCompatActivity() {
             Log.i(tag, "Respiratory rate: $respiratoryRate")
         }
     }
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -182,7 +151,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             requestPermissions()
         }
-
         // Set up the listeners for video capture
         viewBinding.measureHeartRate.setOnClickListener {
             Toast.makeText(
@@ -208,8 +176,6 @@ class MainActivity : AppCompatActivity() {
             )
             progressBar!!.visibility = View.VISIBLE
             layoutMainMenu!!.background.alpha = 200
-
-
         }
         LocalBroadcastManager.getInstance(this@MainActivity)
             .registerReceiver(object : BroadcastReceiver() {
@@ -220,7 +186,7 @@ class MainActivity : AppCompatActivity() {
                         Toast.LENGTH_LONG
                     ).show()
                     val b = intent.extras
-                    val runnable = RespiratoryRateDetector(
+                    val runnable = RespiratoryRateCalc(
                         b!!.getIntegerArrayList("accelValuesX") ?: ArrayList(),
                         b.getIntegerArrayList("accelValuesY") ?: ArrayList(),
                         b.getIntegerArrayList("accelValuesZ") ?: ArrayList()
@@ -248,11 +214,10 @@ class MainActivity : AppCompatActivity() {
                     b.clear()
                     System.gc()
                 }
-            }, IntentFilter("AccelerometerDataBroadcasting"))
+            }, IntentFilter("AccelerometerBroadcastData"))
 
         cameraExecutor = Executors.newSingleThreadExecutor()
         val extendedFab: Button = findViewById(R.id.extended_fab)
-
 
         extendedFab.setOnClickListener {
             val intent = Intent(this, SecondActivity::class.java)
@@ -281,7 +246,6 @@ class MainActivity : AppCompatActivity() {
         cameraProviderFuture.addListener({
             // Used to bind the lifecycle of cameras to the lifecycle owner
             cameraProvider = cameraProviderFuture.get()
-
 
             val recorder = Recorder.Builder()
                 .setQualitySelector(QualitySelector.from(Quality.HD))
@@ -466,7 +430,6 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissions() {
         activityResultLauncher.launch(REQUIRED_PERMISSIONS)
     }
-
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(

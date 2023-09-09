@@ -17,9 +17,9 @@ class Accelerometer : Service(), SensorEventListener {
     private val tag = "DiaShield"
     private val captureTime: Long = 40000
     private var accelerometerManager: SensorManager? = null
-    val accelValuesX = ArrayList<Int>()
-    val accelValuesY = ArrayList<Int>()
-    val accelValuesZ = ArrayList<Int>()
+    private val sensorX = ArrayList<Int>()
+    private val sensorY = ArrayList<Int>()
+    private val sensorZ = ArrayList<Int>()
     override fun onBind(intent: Intent): IBinder? {
         return null
     }
@@ -37,10 +37,16 @@ class Accelerometer : Service(), SensorEventListener {
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         Log.d(tag, "onStartCommand: Accelerometer service is starting")
-        Handler(Looper.getMainLooper()).postDelayed({ stopSelf() }, captureTime)
-        accelValuesX.clear()
-        accelValuesY.clear()
-        accelValuesZ.clear()
+        Handler(
+            Looper.getMainLooper()
+        ).postDelayed(
+            {
+                stopSelf()
+            }, captureTime
+        )
+        sensorX.clear()
+        sensorY.clear()
+        sensorZ.clear()
         return START_STICKY
     }
 
@@ -48,9 +54,9 @@ class Accelerometer : Service(), SensorEventListener {
         Log.d(tag, "onSensorChanged: Capturing data")
         val sensor = sensorEvent.sensor
         if (sensor.type == Sensor.TYPE_ACCELEROMETER) {
-            accelValuesX.add((sensorEvent.values[0] * 100).toInt())
-            accelValuesY.add((sensorEvent.values[1] * 100).toInt())
-            accelValuesZ.add((sensorEvent.values[2] * 100).toInt())
+            sensorX.add((sensorEvent.values[0]).toInt())
+            sensorY.add((sensorEvent.values[1]).toInt())
+            sensorZ.add((sensorEvent.values[2]).toInt())
         }
     }
 
@@ -58,11 +64,11 @@ class Accelerometer : Service(), SensorEventListener {
         accelerometerManager!!.unregisterListener(this)
         Log.d(tag, "Accelerometer service is being stopped")
         val thread = Thread {
-            val intent = Intent("AccelerometerDataBroadcasting")
+            val intent = Intent("AccelerometerBroadcastData")
             val b = Bundle()
-            b.putIntegerArrayList("accelValuesY", accelValuesY)
-            b.putIntegerArrayList("accelValuesZ", accelValuesZ)
-            b.putIntegerArrayList("accelValuesX", accelValuesX)
+            b.putIntegerArrayList("accelValuesY", sensorY)
+            b.putIntegerArrayList("accelValuesZ", sensorZ)
+            b.putIntegerArrayList("accelValuesX", sensorX)
             intent.putExtras(b)
             LocalBroadcastManager.getInstance(this@Accelerometer).sendBroadcast(intent)
         }
