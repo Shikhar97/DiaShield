@@ -61,9 +61,12 @@ class MainActivity : AppCompatActivity() {
     private val rootPath = Environment.getExternalStorageDirectory().path
     private val tag = "DiaShield"
     private var rate: Float = 0.0f
+
     private lateinit var camera: Camera
+    private lateinit var cameraProvider: ProcessCameraProvider
+    private lateinit var cameraSelector: CameraSelector
+
     private lateinit var viewBinding: ActivityMainBinding
-//    private var dialogBox: AlertDialog? = null
     private var layoutMainMenu: ConstraintLayout? = null
     private var videoCapture: VideoCapture<Recorder>? = null
     private var progressBar: ProgressBar? = null
@@ -196,20 +199,14 @@ class MainActivity : AppCompatActivity() {
                 Toast.LENGTH_LONG
             ).show()
             viewBinding.measureRespRate.isEnabled = false
+            viewBinding.measureHeartRate.isEnabled = false
+            viewBinding.extendedFab.isEnabled = false
             startService(intentAccelerometer)
-            window.setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
-//            dialogBox = MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_App_MaterialAlertDialog)
-//                .setIcon(R.drawable.baseline_add_24)
-//                .setTitle(resources.getString(R.string.calculating))
-//                .setMessage("")
-//                .setCancelable(false)
-//                .setNeutralButton(resources.getString(R.string.cancel)) { dialog, _ ->
-//                    dialog.dismiss()
-//                    stopService(intentAccelerometer)
-//                }
-//                .show()
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            )
             progressBar!!.visibility = View.VISIBLE
-//            viewBinding.calculating.visibility = View.VISIBLE
             layoutMainMenu!!.background.alpha = 200
 
 
@@ -225,8 +222,8 @@ class MainActivity : AppCompatActivity() {
                     val b = intent.extras
                     val runnable = RespiratoryRateDetector(
                         b!!.getIntegerArrayList("accelValuesX") ?: ArrayList(),
-                        b!!.getIntegerArrayList("accelValuesY") ?: ArrayList(),
-                        b!!.getIntegerArrayList("accelValuesZ") ?: ArrayList()
+                        b.getIntegerArrayList("accelValuesY") ?: ArrayList(),
+                        b.getIntegerArrayList("accelValuesZ") ?: ArrayList()
                     )
                     val thread = Thread(runnable)
                     thread.start()
@@ -243,8 +240,9 @@ class MainActivity : AppCompatActivity() {
                         Toast.LENGTH_SHORT
                     ).show()
                     viewBinding.measureRespRate.isEnabled = true
+                    viewBinding.measureHeartRate.isEnabled = true
+                    viewBinding.extendedFab.isEnabled = true
                     progressBar!!.visibility = View.INVISIBLE
-//                    viewBinding.calculating.visibility = View.INVISIBLE
                     window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
                     layoutMainMenu!!.background.alpha = 0
                     b.clear()
@@ -277,96 +275,134 @@ class MainActivity : AppCompatActivity() {
         return path
     }
 
+    private fun startCamera() {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+
+        cameraProviderFuture.addListener({
+            // Used to bind the lifecycle of cameras to the lifecycle owner
+            cameraProvider = cameraProviderFuture.get()
+
+
+            val recorder = Recorder.Builder()
+                .setQualitySelector(QualitySelector.from(Quality.HD))
+                .build()
+            videoCapture = VideoCapture.withOutput(recorder)
+
+            // Select back camera as a default
+            cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+        }, ContextCompat.getMainExecutor(this))
+    }
 
     private fun captureVideo() {
-        progressBar!!.visibility = View.VISIBLE
-        window.setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
-        layoutMainMenu!!.background.alpha = 200
-        Log.d(tag, "Camera starting")
-//        viewBinding.calculating.visibility = View.VISIBLE
+        try {
+            // Preview
+            val preview = Preview.Builder()
+                .build()
+                .also {
+                    it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
+                }
+            // Unbind use cases before rebinding
+            cameraProvider.unbindAll()
 
-        // Enabling flash
-        if (camera.cameraInfo.hasFlashUnit()) {
-            camera.cameraControl.enableTorch(true)
-        }
-        val videoCapture = this.videoCapture ?: return
-        viewBinding.measureHeartRate.isEnabled = false
+            // Bind use cases to camera
+            camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, videoCapture)
 
-        // create and start a new recording session
-        val name = "$rootPath/heart_rate_video.mp4"
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, name)
-            put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
-        }
 
-        val mediaStoreOutputOptions = MediaStoreOutputOptions
-            .Builder(contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
-            .setContentValues(contentValues)
-            .build()
-        recording = videoCapture.output
-            .prepareRecording(this, mediaStoreOutputOptions)
-            .start(ContextCompat.getMainExecutor(this)) { recordEvent ->
-                when (recordEvent) {
-                    is VideoRecordEvent.Start -> {
-                        viewBinding.root.postDelayed({
-                            recording?.stop()
-                            recording = null
-                            // Disable flash after capturing
-                            if (camera.cameraInfo.hasFlashUnit()) {
-                                camera.cameraControl.enableTorch(false)
-                            }
-                        }, captureTime)
+            progressBar!!.visibility = View.VISIBLE
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            )
+            layoutMainMenu!!.background.alpha = 200
+            Log.d(tag, "Camera starting")
 
-                        viewBinding.measureHeartRate.apply {
-                            isEnabled = false
-                        }
-                    }
+            // Enabling flash
+            if (camera.cameraInfo.hasFlashUnit()) {
+                camera.cameraControl.enableTorch(true)
+            }
+            val videoCapture = this.videoCapture ?: return
 
-                    is VideoRecordEvent.Finalize -> {
-                        if (!recordEvent.hasError()) {
-                            val msg = "Video capture succeeded: " +
-                                    "${recordEvent.outputResults.outputUri}"
+            // create and start a new recording session
+            val name = "$rootPath/heart_rate_video.mp4"
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
+            }
 
-                            val videoPath =
-                                convertMediaUriToPath(recordEvent.outputResults.outputUri)
-                            Toast.makeText(
-                                baseContext,
-                                "Calculating heart rate ",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            lifecycleScope.launch(Dispatchers.IO) {
-                                calculateHeartRate(videoPath)
-                                withContext(Dispatchers.Main) {
-                                    viewBinding.heartRateVal.setText(heartRate)
-                                    Log.i(tag, "Heart rate: $heartRate")
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        "Heart rate calculated!",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    progressBar!!.visibility = View.INVISIBLE
-//                                    viewBinding.calculating.visibility = View.INVISIBLE
-                                    window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
-                                    layoutMainMenu!!.background.alpha = 0
-                                    viewBinding.measureHeartRate.apply {
-                                        isEnabled = true
-                                    }
-
+            val mediaStoreOutputOptions = MediaStoreOutputOptions
+                .Builder(contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+                .setContentValues(contentValues)
+                .build()
+            recording = videoCapture.output
+                .prepareRecording(this, mediaStoreOutputOptions)
+                .start(ContextCompat.getMainExecutor(this)) { recordEvent ->
+                    when (recordEvent) {
+                        is VideoRecordEvent.Start -> {
+                            viewBinding.viewFinder.foreground.alpha = 0
+                            viewBinding.root.postDelayed({
+                                recording?.stop()
+                                recording = null
+                                // Disable flash after capturing
+                                if (camera.cameraInfo.hasFlashUnit()) {
+                                    camera.cameraControl.enableTorch(false)
                                 }
+                                viewBinding.viewFinder.foreground.alpha = 255
+
+                            }, captureTime)
+
+                            viewBinding.measureHeartRate.isEnabled = false
+                            viewBinding.measureRespRate.isEnabled = false
+                            viewBinding.extendedFab.isEnabled = false
+                        }
+
+                        is VideoRecordEvent.Finalize -> {
+                            if (!recordEvent.hasError()) {
+                                val msg = "Video capture succeeded: " +
+                                        "${recordEvent.outputResults.outputUri}"
+
+                                val videoPath =
+                                    convertMediaUriToPath(recordEvent.outputResults.outputUri)
+                                Toast.makeText(
+                                    baseContext,
+                                    "Calculating heart rate ",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                lifecycleScope.launch(Dispatchers.IO) {
+                                    calculateHeartRate(videoPath)
+                                    withContext(Dispatchers.Main) {
+                                        viewBinding.heartRateVal.setText(heartRate)
+                                        Log.i(tag, "Heart rate: $heartRate")
+                                        Toast.makeText(
+                                            this@MainActivity,
+                                            "Heart rate calculated!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        progressBar!!.visibility = View.INVISIBLE
+                                        window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                                        layoutMainMenu!!.background.alpha = 0
+                                        viewBinding.measureRespRate.isEnabled = true
+                                        viewBinding.extendedFab.isEnabled = true
+                                        viewBinding.measureHeartRate.isEnabled = true
+                                    }
+                                }
+                                cameraProvider.unbindAll()
+                                Log.d(tag, videoPath)
+                                Log.d(tag, msg)
+                            } else {
+                                recording?.close()
+                                recording = null
+                                Log.e(
+                                    tag, "Video capture ends with error: " +
+                                            "${recordEvent.error}"
+                                )
                             }
-                            Log.d(tag, videoPath)
-                            Log.d(tag, msg)
-                        } else {
-                            recording?.close()
-                            recording = null
-                            Log.e(
-                                tag, "Video capture ends with error: " +
-                                        "${recordEvent.error}"
-                            )
                         }
                     }
                 }
-            }
+        } catch (exc: Exception) {
+            Log.e(tag, "Use case binding failed", exc)
+        }
     }
 
     private fun calculateHeartRate(vararg params: String?): String {
@@ -425,43 +461,6 @@ class MainActivity : AppCompatActivity() {
         }
         return (rate / 2).toString()
 
-    }
-
-    private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-
-        cameraProviderFuture.addListener({
-            // Used to bind the lifecycle of cameras to the lifecycle owner
-            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-
-            // Preview
-            val preview = Preview.Builder()
-                .build()
-                .also {
-                    it.setSurfaceProvider(viewBinding.viewFinder.surfaceProvider)
-                }
-
-            val recorder = Recorder.Builder()
-                .setQualitySelector(QualitySelector.from(Quality.HD))
-                .build()
-            videoCapture = VideoCapture.withOutput(recorder)
-
-            // Select back camera as a default
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-            try {
-                // Unbind use cases before rebinding
-                cameraProvider.unbindAll()
-
-                // Bind use cases to camera
-                camera = cameraProvider.bindToLifecycle(this, cameraSelector, preview, videoCapture)
-
-
-            } catch (exc: Exception) {
-                Log.e(tag, "Use case binding failed", exc)
-            }
-
-        }, ContextCompat.getMainExecutor(this))
     }
 
     private fun requestPermissions() {
