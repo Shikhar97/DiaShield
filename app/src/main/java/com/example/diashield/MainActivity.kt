@@ -55,7 +55,7 @@ import kotlin.math.sqrt
 
 class MainActivity : AppCompatActivity() {
 
-    private val captureTime: Long = 40000
+    private val captureTime: Long = 45000
     private var heartRate = "0"
     private var respRate = "0"
     private val rootPath = Environment.getExternalStorageDirectory().path
@@ -158,6 +158,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val apiVersion = android.os.Build.VERSION.SDK_INT
+        Log.i(tag, "Android API Version: $apiVersion")
         viewBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(viewBinding.root)
         layoutMainMenu = findViewById(R.id.background)
