@@ -20,6 +20,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.util.Collections
+import kotlin.math.roundToInt
 
 
 class MapActivity : AppCompatActivity() {
@@ -29,9 +30,8 @@ class MapActivity : AppCompatActivity() {
     private var routesArray = JsonObject()
     private var avgSpeed = 0.0
     private fun getDirections(src: String, dest: String): JsonObject {
-
         val url =
-            "https://maps.googleapis.com/maps/api/directions/json?origin=$src&destination=$dest&key=AIzaSyAMH63jFIVzGWRix4jPh7tLpiz3ZD0FaLM"
+            "https://maps.googleapis.com/maps/api/directions/json?origin=$src&destination=$dest&key="
         val client = OkHttpClient()
         lifecycleScope.launch(Dispatchers.IO) {
             val request = Request.Builder()
@@ -46,16 +46,17 @@ class MapActivity : AppCompatActivity() {
                     routesArray = jsonObject.getAsJsonArray("routes")[0].asJsonObject
                         .getAsJsonArray("legs")[0].asJsonObject
                     avgSpeed =
-                        routesArray.get("distance").asJsonObject.get("value").asDouble / routesArray.get(
+                        (routesArray.get("distance").asJsonObject.get("value").asDouble / routesArray.get(
                             "duration"
-                        ).asJsonObject.get("value").asDouble
-                    Log.i(tag, "Avg Speed:$avgSpeed")
-                    val congestionData = sampleTrafficCongestion(routesArray)
-                    val labels = categorizeRoad(congestionData)
-                    Log.i(tag, "Road Conditions:$labels")
+                        ).asJsonObject.get("value").asDouble *  2.23694 * 100.0).roundToInt() / 100.0
+                    Log.i(tag, "Avg Speed: $avgSpeed")
+                    val currentSpeed = sampleTrafficCongestion(routesArray)
+                    val labels = categorizeRoadCondition(avgSpeed, currentSpeed)
+                    Log.i(tag, "Road Conditions: $labels")
+//                    val speedDiff = avgSpeed - currentSpeed
                     Toast.makeText(
                         baseContext,
-                        "Road Conditions:$labels",
+                        "Road Conditions: $labels, Avg. Speed: ${avgSpeed}, Current Speed: $currentSpeed",
                         Toast.LENGTH_SHORT
                     ).show()
 
@@ -69,76 +70,69 @@ class MapActivity : AppCompatActivity() {
         return routesArray
     }
 
-    private fun categorizeRoad(congestionData: List<Double>): List<Int> {
-        val labels = mutableListOf<Int>()
-        for (c in congestionData) {
-            if (c > 0) {
-                labels.add(1)
-            } else {
-                labels.add(2)
-            }
+    private fun categorizeRoadCondition(avg: Double, current: Double): String {
+        return if(avg - current > 0){
+            "HCW"
+        } else {
+            "LCW"
         }
 
-        return labels
     }
 
     private suspend fun sampleTrafficCongestion(
         directions: JsonObject,
-    ): List<Double> {
-        val congestionData = mutableListOf<Double>()
-        val steps = directions.getAsJsonArray("steps")
+    ): Double {
+        var currentSpeed = 0.0
+//        val steps = directions.getAsJsonArray("steps")
         var congestion = mutableListOf<Job>()
 
         runBlocking {
-            for (step in steps) {
-                val stepObject = step.asJsonObject
-                val startLocation = stepObject.get("start_location").asJsonObject
-                val endLocation = stepObject.get("end_location").asJsonObject
+            val startLocation = directions.get("start_location").asJsonObject
+            val endLocation = directions.get("end_location").asJsonObject
 
-                val client = OkHttpClient()
+            val client = OkHttpClient()
 
-                val startLat = startLocation.get("lat").asDouble
-                val startLng = startLocation.get("lng").asDouble
-                val endLat = endLocation.get("lat").asDouble
-                val endLng = endLocation.get("lng").asDouble
-                val job = launch(context = Dispatchers.Default) {
-                        coroutineScope {
-                            val matrixUrl =
-                                "https://maps.googleapis.com/maps/api/distancematrix/json?traffic_model=best_guess&departure_time=now&destinations=$startLat,$startLng&origins=$endLat,$endLng&mode=driving&key=AIzaSyAMH63jFIVzGWRix4jPh7tLpiz3ZD0FaLM"
+            val startLat = startLocation.get("lat").asDouble
+            val startLng = startLocation.get("lng").asDouble
+            val endLat = endLocation.get("lat").asDouble
+            val endLng = endLocation.get("lng").asDouble
 
-                            val request = Request.Builder()
-                                .url(matrixUrl)
-                                .build()
-                            val response = client.newCall(request).execute()
+            val job = launch(context = Dispatchers.Default) {
+                coroutineScope {
+                    val matrixUrl =
+                        "https://maps.googleapis.com/maps/api/distancematrix/json?traffic_model=best_guess&departure_time=now&destinations=$startLat,$startLng&origins=$endLat,$endLng&mode=driving&key="
 
-                            if (response.isSuccessful) {
-                                val responseBody = response.body
-                                val responseText = responseBody?.string()
-                                val jsonObject = gson.fromJson(responseText, JsonObject::class.java)
-                                val duration = jsonObject.getAsJsonArray("rows")[0].asJsonObject
-                                    .getAsJsonArray("elements")[0].asJsonObject
-                                    .get("duration_in_traffic").asJsonObject
-                                    .get("value").asDouble
-                                val distance = jsonObject.getAsJsonArray("rows")[0].asJsonObject
-                                    .getAsJsonArray("elements")[0].asJsonObject
-                                    .get("distance").asJsonObject
-                                    .get("value").asDouble
-                                val currentSpeed = distance / duration
-                                Log.i(tag, "Current Speed: $currentSpeed")
-                                congestionData.add(avgSpeed - currentSpeed)
-                            } else {
-                                Log.i(tag, "Request failed with code: ${response.code}")
-                            }
-                            response.close()
-                        }
+                    val request = Request.Builder()
+                        .url(matrixUrl)
+                        .build()
+                    val response = client.newCall(request).execute()
 
+                    if (response.isSuccessful) {
+                        val responseBody = response.body
+                        val responseText = responseBody?.string()
+                        val jsonObject = gson.fromJson(responseText, JsonObject::class.java)
+                        val duration = jsonObject.getAsJsonArray("rows")[0].asJsonObject
+                            .getAsJsonArray("elements")[0].asJsonObject
+                            .get("duration_in_traffic").asJsonObject
+                            .get("value").asDouble
+                        val distance = jsonObject.getAsJsonArray("rows")[0].asJsonObject
+                            .getAsJsonArray("elements")[0].asJsonObject
+                            .get("distance").asJsonObject
+                            .get("value").asDouble
+                        currentSpeed = ((distance / duration)  *  2.23694 * 100.0).roundToInt() / 100.0
+                    } else {
+                        Log.i(tag, "Request failed with code: ${response.code}")
                     }
-                congestion.add(job)
+                    response.close()
                 }
+
             }
+            congestion.add(job)
+        }
         congestion = Collections.unmodifiableList(congestion)
         congestion.joinAll()
-        return congestionData
+        Log.i(tag, "Current Speed: $currentSpeed")
+        return currentSpeed
     }
 
     private lateinit var mapBinding: ActivityMapBinding

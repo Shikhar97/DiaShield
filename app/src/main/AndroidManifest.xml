@@ -21,7 +21,6 @@
         <activity
             android:name=".MapActivity"
             android:exported="true"
-            android:label="@string/title_activity_map"
             android:theme="@style/Theme.DiaShield" />
         <activity
             android:name=".MainActivity"
