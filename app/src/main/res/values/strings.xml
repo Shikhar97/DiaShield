@@ -24,4 +24,10 @@
     <string name="calculating">Calculating....</string>
     <string name="accept">Great!</string>
     <string name="cancel">Cancel</string>
+    <string name="title_activity_map">MapActivity</string>
+    <string name="api_key">AIzaSyAMH63jFIVzGWRix4jPh7tLpiz3ZD0FaLM</string>
+    <string name="get_road_conditions">Get Road Condition</string>
+    <string name="destination">Destination</string>
+    <string name="source">Source</string>
+    <string name="road">Road</string>
 </resources>

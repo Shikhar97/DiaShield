@@ -228,6 +228,12 @@ class MainActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        val roadFab: Button = findViewById(R.id.get_road_conditions)
+        roadFab.setOnClickListener {
+            val intent = Intent(this, MapActivity::class.java)
+            startActivity(intent)
+        }
+
     }
 
     private fun convertMediaUriToPath(uri: Uri?): String {

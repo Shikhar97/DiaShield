@@ -45,6 +45,17 @@
         app:layout_constraintStart_toStartOf="parent" />
 
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/get_road_conditions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        app:icon="@drawable/baseline_directions_car_24"
+
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/extended_fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -119,20 +130,6 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent" />
-
-<!--    <TextView-->
-<!--        android:id="@+id/calculating"-->
-<!--        android:layout_width="wrap_content"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:layout_marginTop="44dp"-->
-<!--        android:layout_marginEnd="56dp"-->
-<!--        android:background="#00000000"-->
-<!--        android:elevation="100dp"-->
-<!--        android:text="@string/calculating"-->
-<!--        android:textSize="30sp"-->
-<!--        android:visibility="invisible"-->
-<!--        app:layout_constraintEnd_toEndOf="parent"-->
-<!--        app:layout_constraintTop_toBottomOf="@+id/progressBar" />-->
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline2"
